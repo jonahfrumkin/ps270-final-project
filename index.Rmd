@@ -15,5 +15,70 @@ I am interested in exploring data related to the effects of gender, race/ethnici
 
 ## Milestone 2 
 
-My research question will be, what is the effect of zip code and racial/ethnic percentage of a school on its SAT scores. My hypothesis is that schools with a higher percentage of Black and Hispanic students will perform worse because of the long-lasting effects of racist practices such as segregation and racial biases in terms of housing, education, and employment. The independent variables will be a school's zip code and its racial/ethnic percentage because these two variables can be tied to each other due to residential segregation efforts in the past. The race/ethnicity of a school will be calculated by counting the total number of students and then finding the percentage of different student demographics. The zipcode is determined by the geographical boundaries of which the school is in and that will be represented by a five digit code. An observed pattern that would prove my hypothesis to be true is if schools with higher percentages of students that are Black or Hispanic are found to have relatively lower SAT scores on the math and reading sections. Another pattern that would prove my hypothesis to be true is if there were distinct variations in SAT math and reading scores between different zip codes and those various zip codes are associated with different percentages of Black and Hispanic students. An observed pattern that would disprove this hypothesis would be if there was no general distinction in SAT scores between schools that had different proportions of Black and Hispanic students as well as not having a great variation in SAT scores between different zip codes.
+The data I am analyzing is from a dataset of median household income by zipcode in NYC in 2015 and a dataset of all NYC public schools' SAT scores from the 2014-15 school year. My research question will be, what is the effect of median household income and race/ethnicity on SAT scores and to what extent does median hosuehold income effect a different racial/ethnic students' SAT scores. My hypothesis is that students in schools in a zip code with a higher median income will beform better on the SAT compared to their counterparts. In addition, I believe household income will have a greater positive impact on white students' SAT scores compared to their counterparts because of the long-lasting effects of racist practices such as segregation and racial biases in terms of housing, education, and employment. The independent variables will be a school's median household income determined by zip code and its racial/ethnic percentage. A school's median household income will be seperated into 3 income groups(below 40k, 40k-80k, and above 80k). The race/ethnicity of a school will seperated into two categories "Majority White" if over 50% of the student body is white and "Minority White" if otherwise. The zip code is determined by the geographical boundaries of which the school is in and that will be represented by a five digit code and I will tie a school's median household income to the zip code that it is in. An observed pattern that would prove my hypothesis to be true is if schools with higher percentages of white students are found to have relatively higher SAT scores. Another pattern that would prove my hypothesis to be true is if there were distinct variations in SAT scores between schools with different median household incomes. Also, if there is a greater variation between SAT scores for white students across income groups compared non-white students, that would also support my hypothesis. An observed pattern that would disprove this hypothesis would be if there was no general distinction in SAT scores between schools that had different proportions of white students and if race/ethnicity ended up having no effect on SAT scores across different median household income groups. 
+
+## Milestone 3
+
+```{r}
+library(tidyverse)
+nycsat <- read_csv("data/scores.csv")
+nycincome <- read.csv("data/Median2015.csv")
+```
+```{r}
+nycincome_clean <- nycincome |>
+  slice(-1:-3) |>
+  rename(`Zip Code` = NAME, `Median Income` = S1903_C02_001E) |>
+  select(`Zip Code`, `Median Income`) |>
+  mutate(`Zip Code` = str_remove(`Zip Code`, "ZCTA5 ")) |>
+  mutate(`Zip Code` = as.numeric(`Zip Code`)) |>
+  mutate(`Median Income` = case_when(
+    `Median Income` < 40000 ~ "1. Under $40k",
+    `Median Income` >= 40000 & `Median Income` <= 80000 ~ "2. $40k - $80k",
+    `Median Income` > 80000 ~ "3. Over $80k"))
+
+  
+```
+
+```{r}
+nycsat_clean <- nycsat |>
+  mutate(`Average SAT Score` = `Average Score (SAT Math)` + `Average Score (SAT Reading)` + `Average Score (SAT Writing)`) |>
+  filter( `Percent Tested` >= "50%") |>
+  rename(`Standard Percent Tested` = `Percent Tested`) |>
+  mutate(`Majority White` = if_else(`Percent White` > "50%", "Majority White", "Minority White")) |>
+  select(`School ID`, `Zip Code`, `Average SAT Score`, `Majority White`, `Student Enrollment`, `Standard Percent Tested`)
+```
+
+
+```{r}
+nycsat_income <- nycsat_clean |>
+  left_join(nycincome_clean) 
+  
+  
+  
+```
+
+```{r}
+nycsat_income |>
+  group_by(`Median Income`) |>
+  summarise(`Median SAT Score` = median(`Average SAT Score`, na.rm = TRUE)) 
+  
+```
+```{r}
+nycsat_income |>
+  group_by(`Majority White`) |>
+  summarise(`Median SAT Score` = median(`Average SAT Score`, na.rm = TRUE)) 
+  
+```
+
+```{r}
+nycsat_income |>
+  group_by(`Majority White`, `Median Income`) |>
+  summarise(`Median SAT Score` = median(`Average SAT Score`, na.rm = TRUE)) |>
+  pivot_wider(names_from = `Median Income`,
+              values_from = `Median SAT Score`)
+  
+```
+
+
+
 
