@@ -11,7 +11,7 @@ output:
 
 ## Milestone 1 (project thoughts)
 
-I am interested in exploring data related to the effects of gender, race/ethnicity, SES, and parent education level on a student's standardized exam or on how frequently a student is suspended/expelled from school.
+I am interested in exploring data related to the effects of gender, race/ethnicity, SES, and parent education level on a student's standardized exam or how frequently a student is suspended/expelled from school.
 
 ## Milestone 2 
 
