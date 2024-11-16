@@ -15,7 +15,7 @@ I am interested in exploring data related to the effects of gender, race/ethnici
 
 ## Milestone 2 
 
-The data I am analyzing is from a dataset of median household income by zip code in NYC in 2015 and a dataset of all NYC public schools' SAT scores from the 2014-15 school year. My research question will be, what is the effect of a student's median household income and race/ethnicity on SAT scores and to what extent does median hosuehold income effect a student's SAT scores based on their race/ethnicity. My hypothesis is that students in schools in a zip code with a higher median income will peform better on the SAT compared to their counterparts. In addition, I believe household income will have a greater positive impact on white students' SAT scores compared to their counterparts because of the long-lasting effects of racist practices such as implicit bias playing a role in tracking causing students of color to not learn and practice skills that require higher levels of thinking and analyzing. The independent variables will be a school's median household income determined by zip code and its racial/ethnic percentage. A school's median household income will be seperated into 3 income groups(below 40k, 40k-80k, and above 80k). The race/ethnicity of a school will seperated into two categories "Majority White" if over 50% of the student body is white and "Minority White" if otherwise. The zip code is determined by the geographical boundaries of which the school is in and that will be represented by a five digit code and I will tie a school's median household income to the zip code that it is in. An observed pattern that would prove my hypothesis to be true is if schools with higher percentages of white students are found to have relatively higher SAT scores. Another pattern that would prove my hypothesis to be true is if there were distinct variations in SAT scores between schools with different median household incomes. Also, if there is a greater variation between SAT scores for white students across income groups compared non-white students, which would show the unfair racial biases that promote positive academic outcomes for white students. An observed pattern that would disprove this hypothesis would be if there was no general distinction in SAT scores between schools that had different proportions of white students and if race/ethnicity ended up having no effect on SAT scores across different median household income groups. 
+The data I am analyzing is from a dataset of median household income by zip code in NYC in 2015 and a dataset of all NYC public schools' SAT scores from the 2014-15 school year. My research question will be, what is the effect of a student's median household income and race/ethnicity on SAT scores and to what extent does median hosuehold income effect a student's SAT scores based on their race/ethnicity. My hypothesis is that students in schools in a zip code with a higher median income will peform better on the SAT compared to their counterparts. In addition, I believe an increased household income will have a greater positive impact on white students' SAT scores compared to their counterparts because of the long-lasting effects of racist practices such as implicit bias playing a role in tracking causing students of color to not learn and practice skills that require higher levels of thinking and analysis. The independent variables will be a school's median household income determined by zip code and its racial/ethnic percentage. A school's median household income will be seperated into 3 income groups(below 40k, 40k-80k, and above 80k). The race/ethnicity of a school will seperated into two categories "Majority White" if over 50% of the student body is white and "Minority White" if otherwise. The zip code is determined by the geographical boundaries of which the school is in and that will be represented by a five digit code and I will tie a school's median household income to the zip code that it is in. An observed pattern that would prove my hypothesis to be true is if schools with higher percentages of white students are found to have relatively higher SAT scores. Another pattern that would prove my hypothesis to be true is if there were distinct variations in SAT scores between schools with different median household incomes. Also, if there is a greater variation between SAT scores for white students across income groups compared non-white students, which would show the unfair racial biases that promote better outcomes for white students across all income groups. An observed pattern that would disprove this hypothesis would be if there was no general distinction in SAT scores between schools that had different proportions of white students. Also if there was not variation between income groups and if race/ethnicity ended up having no effect on SAT scores across different median household income groups. 
 
 ## Milestone 3
 
@@ -28,14 +28,11 @@ nycincome <- read.csv("data/Median2015.csv")
 ```{r}
 nycincome_clean <- nycincome |>
   slice(-1:-3) |>
-  rename(`Zip Code` = NAME, `Median Income` = S1903_C02_001E) |>
-  select(`Zip Code`, `Median Income`) |>
+  rename(`Zip Code` = NAME, `Household Median Income` = S1903_C02_001E) |>
   mutate(`Zip Code` = str_remove(`Zip Code`, "ZCTA5 ")) |>
   mutate(`Zip Code` = as.numeric(`Zip Code`)) |>
-  mutate(`Median Income` = case_when(
-    `Median Income` < 40000 ~ "1. Under $40k",
-    `Median Income` >= 40000 & `Median Income` <= 80000 ~ "2. $40k - $80k",
-    `Median Income` > 80000 ~ "3. Over $80k"))
+  mutate(`Household Median Income` = as.numeric(`Household Median Income`)) |>
+    select(`Zip Code`, `Household Median Income`) 
 
   
 ```
@@ -44,88 +41,102 @@ nycincome_clean <- nycincome |>
 nycsat_clean <- nycsat |>
   mutate(`Average SAT Score` = `Average Score (SAT Math)` + `Average Score (SAT Reading)` + `Average Score (SAT Writing)`) |>
   filter( `Percent Tested` >= "50%") |>
-  rename(`Standard Percent Tested` = `Percent Tested`) |>
-  mutate(`Majority White` = if_else(`Percent White` > "50%", "Majority White", "Minority White")) |>
-  select(`School ID`, `Zip Code`, `Average SAT Score`, `Majority White`, `Student Enrollment`, `Standard Percent Tested`)
+  rename(`Standard Percent Tested` = `Percent Tested`) |> 
+  mutate(`Percent White` = str_remove(`Percent White`, "%")) |>
+  mutate(`Percent White` = as.numeric(`Percent White`)) |>
+  select(`School ID`, `Zip Code`, `Average SAT Score`, `Percent White`, `Student Enrollment`, `Standard Percent Tested`)
 ```
 
 
 ```{r}
 nycsat_income <- nycsat_clean |>
-  left_join(nycincome_clean) 
+  left_join(nycincome_clean, by = "Zip Code") |>
+  drop_na(`Household Median Income`)
   
   
   
 ```
 
+
 ```{r}
-income_group <- nycsat_income |>
-  group_by(`Median Income`) |>
-  summarise(`Median SAT Score` = median(`Average SAT Score`, na.rm = TRUE)) 
-
-
-kable(income_group, digits = 0, col.names = c("Median Income", "Median SAT Score"), caption = "Median SAT Score by Median Income Group")
-
-```
-```{r}
-income_group_plot <- ggplot(income_group, aes(x = `Median Income`, y = `Median SAT Score`)) +
-  geom_bar(stat = "identity") +
-  labs(title = "NYC Public School SAT Scores (2014-15) by Median Household Income", caption = "Source: US Census Bureau") +
-  coord_cartesian(ylim = c(1000, 1400)) +
-  theme_minimal()
+income_group_plot <- ggplot(nycsat_income, aes(x = `Household Median Income`, y = `Average SAT Score`)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "NYC Public School SAT Scores (2014-15) by Median Household Income", caption = "Source: US Census Bureau")
 
 income_group_plot
+
+Model_income <- lm(`Average SAT Score` ~ `Household Median Income`, nycsat_income)
+Model_income
+
+
+```
+```{r}
+race_eth_plot <- ggplot(nycsat_income, aes(x = `Percent White`, y = `Average SAT Score`)) +
+  geom_point(alpha = 0.5) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "NYC Public School SAT Scores (2014-15) by Race/Ethnicity", caption = "Source: New York City Department of Education and College Board") 
+
+race_eth_plot
+
+Model_race_eth <- lm(`Average SAT Score` ~ `Percent White`, nycsat_income)
+Model_race_eth
 ```
 
 
 
+
+## Milestone 4
+
+
 ```{r}
-nycsat_race_eth <- nycsat_income |>
+nycincome_clean_2 <- nycincome |>
+  slice(-1:-3) |>
+  rename(`Zip Code` = NAME, `Household Median Income` = S1903_C02_001E) |>
+  mutate(`Zip Code` = str_remove(`Zip Code`, "ZCTA5 ")) |>
+  mutate(`Zip Code` = as.numeric(`Zip Code`)) |>
+  mutate(`Household Median Income` = as.numeric(`Household Median Income`)) |>
+   select(`Zip Code`, `Household Median Income`) 
+
+nycsat_clean <- nycsat |>
+  mutate(`Average SAT Score` = `Average Score (SAT Math)` + `Average Score (SAT Reading)` + `Average Score (SAT Writing)`) |>
+  filter( `Percent Tested` >= "50%") |>
+  rename(`Standard Percent Tested` = `Percent Tested`) |>
+  mutate(`Majority White` = if_else(`Percent White` > "50%", "Majority White", "Minority White")) |>
+  select(`School ID`, `Zip Code`, `Average SAT Score`, `Majority White`, `Student Enrollment`, `Standard Percent Tested`)
+
+nycsat_income_2 <- nycsat_clean |>
+  left_join(nycincome_clean_2, by = "Zip Code") |>
+  drop_na(`Household Median Income`)
+  
+
+```
+```{r}
+nycsat_race_eth <- nycsat_income_2 |>
   group_by(`Majority White`) |>
   summarise(`Median SAT Score` = median(`Average SAT Score`, na.rm = TRUE)) 
 
 kable(nycsat_race_eth, digits = 0, col.names = c("Race/Ethnicity", "Median SAT Score"), caption = "Median SAT Score by Race/Ethnicity")
   
 ```
-```{r}
-nycsat_race_eth_plot <- ggplot(nycsat_race_eth, aes(x = `Majority White`, y = `Median SAT Score`)) +
-  geom_bar(stat = "identity") +
-  labs(x = "Percentage of White Students", title = "NYC Public School SAT Scores (2014-15) by Race/Ethnicty", caption = "Sources: New York City Department of Education and College Board") +
-  coord_cartesian(ylim = c(1000, 1400)) +
-  theme_minimal()
-
-nycsat_race_eth_plot
-```
 
 
 ```{r}
-race_eth_to_income <- nycsat_income |>
-  group_by(`Majority White`, `Median Income`) |>
-  summarise(`Median SAT Score` = median(`Average SAT Score`, na.rm = TRUE)) |>
-  pivot_wider(names_from = `Median Income`,
-              values_from = `Median SAT Score`)
+scatter_nycsatinc_plot <- 
+  ggplot(nycsat_income_2, aes(x = `Household Median Income`, y = `Average SAT Score`, color = `Majority White`)) +
+  geom_point() +
+  geom_smooth(aes(group = `Majority White`), method = "lm", se = FALSE) +
+  labs(title = "Effect of Race/Ethnicity on Avg SAT Score Across Household Median Incomes",  caption = "Sources: New York City Department of Education, College Board, and US Census Bureau")
 
-kable(race_eth_to_income, digits = 0, caption = "Effect of Race/Ethnicity on SAT Scores Across Income groups")
-  
+scatter_nycsatinc_plot  
+
+model_majority <- lm(`Average SAT Score` ~ `Household Median Income`, data = subset(nycsat_income_2, `Majority White` == "Majority White"))
+model_minority <- lm(`Average SAT Score` ~ `Household Median Income`, data = subset(nycsat_income_2, `Majority White` == "Minority White"))
+
+model_majority
+model_minority
 ```
 
-```{r}
-race_eth_to_income_nopiv <- nycsat_income |>
-  group_by(`Majority White`, `Median Income`) |>
-  summarise(`Median SAT Score` = median(`Average SAT Score`, na.rm = TRUE))
-race_eth_to_income_nopiv
-```
-
-```{r}
-race_eth_to_income_plot <- ggplot(race_eth_to_income_nopiv, aes(x = `Median Income`, y = `Median SAT Score`, fill = `Majority White`)) +
-  geom_col(position = "dodge") +
-  labs(title = "Effect of Race/Ethnicity on SAT Scores Across Income groups", caption = "Sources: New York City Department of Education, College Board, and US Census Bureau") +
-  coord_cartesian(ylim = c(1000, 1400)) +
-  theme_minimal()
-  
-
-race_eth_to_income_plot
-```
 
 
 
