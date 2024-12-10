@@ -22,9 +22,13 @@ output:
 ```{r}
 library(tidyverse)
 library(knitr)
+library(broom)
+library(modelsummary)
 nycsat <- read_csv("data/scores.csv")
 nycincome <- read.csv("data/Median2015.csv")
 ```
+# Data from US Census Bureau 
+
 ```{r}
 nycincome_clean <- nycincome |>
   slice(-1:-3) |>
@@ -36,7 +40,7 @@ nycincome_clean <- nycincome |>
 
   
 ```
-
+# Data from Kaggle (NYC Department of Education and College Board)
 ```{r}
 nycsat_clean <- nycsat |>
   mutate(`Average SAT Score` = `Average Score (SAT Math)` + `Average Score (SAT Reading)` + `Average Score (SAT Writing)`) |>
@@ -49,12 +53,13 @@ nycsat_clean <- nycsat |>
   select(`School ID`, `Zip Code`, `Average SAT Score`, `Percent White`, `Student Enrollment`, `Standard Percent Tested`)
 ```
 
-
+# Merging data sets
 ```{r}
 nycsat_income <- nycsat_clean |>
   left_join(nycincome_clean, by = "Zip Code") |>
   drop_na(`Household Median Income`)
 ```
+# Outcome variable
 
 ```{r}
 dep_nycsat_income_plot <-
@@ -73,6 +78,7 @@ dep_nycsat_income_plot
     
 ## Results section
 
+# Vizualization 1 
 ```{r}
 income_group_plot <- ggplot(nycsat_income, aes(x = `Household Median Income`, y = `Average SAT Score`)) +
   geom_point() +
@@ -82,19 +88,31 @@ income_group_plot <- ggplot(nycsat_income, aes(x = `Household Median Income`, y 
 income_group_plot
 
 Model_income <- lm(`Average SAT Score` ~ `Household Median Income`, nycsat_income)
-Model_income
 
-summary(Model_income)
+
+tidy(Model_income) |>
+   kable(caption = "Regression Results for Household Median Income")
+
+Model_income_r_squared <- summary(Model_income)$r.squared
+cat("The R-squared value for Household Median Income is:", round(Model_income_r_squared, 3), "\n\n")
 
 Model_income_race_control <- lm(`Average SAT Score` ~ `Household Median Income` + `Percent White`, nycsat_income)
-Model_income_race_control
+
+tidy(Model_income_race_control) |>
+   kable(caption = "Regression Results for Household Median Income when controlling for race/ethnicity")
+
+Model_income_race_control_r_squared <- summary(Model_income_race_control)$r.squared
+cat("The R-squared value of Household Median Income when controlling for race/ethnicity is:", round(Model_income_race_control_r_squared, 3), "\n\n")
+
 
 inc_sat_cor <- cor(nycsat_income$`Average SAT Score`, nycsat_income$`Household Median Income`)
-inc_sat_cor
+cat("The correlation between Household Median Income and Average SAT Score is:", round(inc_sat_cor, 3))
 
 
 
 ```
+# Vizualization 2
+
 ```{r}
 race_eth_plot <- ggplot(nycsat_income, aes(x = `Percent White`, y = `Average SAT Score`)) +
   geom_point(alpha = 0.5) +
@@ -104,15 +122,19 @@ race_eth_plot <- ggplot(nycsat_income, aes(x = `Percent White`, y = `Average SAT
 race_eth_plot
 
 Model_race_eth <- lm(`Average SAT Score` ~ `Percent White`, nycsat_income)
-Model_race_eth
 
-summary(Model_race_eth)
+
+tidy(Model_race_eth) |>
+   kable(caption = "Regression Results for race/ethnicity")
+
+Model_race_eth_r_squared <- summary(Model_race_eth)$r.squared
+cat("The R-squared value for race/ethnicty is:", round(Model_race_eth_r_squared, 3), "\n\n")
 
 race_sat_cor <- cor(nycsat_income$`Average SAT Score`, nycsat_income$`Percent White`)
-race_sat_cor
+cat("The correlation between race/ethnicity and Average SAT Score is:", round(race_sat_cor, 3))
 
 ```
-
+# Mutating Race/Ethnicity Variable
 ```{r}
 nycincome_clean_2 <- nycincome |>
   slice(-1:-3) |>
@@ -135,6 +157,8 @@ nycsat_income_2 <- nycsat_clean |>
   
 
 ```
+# Vizualization 3 
+
 ```{r}
 nycsat_race_eth <- nycsat_income_2 |>
   group_by(`Majority White`) |>
@@ -144,6 +168,7 @@ kable(nycsat_race_eth, digits = 0, col.names = c("Race/Ethnicity", "Median SAT S
   
 ```
 
+# Vizualization 4
 
 ```{r}
 scatter_nycsatinc_plot <- 
@@ -157,49 +182,45 @@ scatter_nycsatinc_plot
 model_majority <- lm(`Average SAT Score` ~ `Household Median Income`, data = subset(nycsat_income_2, `Majority White` == "Majority White"))
 model_minority <- lm(`Average SAT Score` ~ `Household Median Income`, data = subset(nycsat_income_2, `Majority White` == "Minority White"))
 
-model_majority
-model_minority
+
+tidy(model_majority) |>
+  kable(caption = "Regression Results for Majority White Schools")
+tidy(model_minority) |>
+  kable(caption = "Regression Results for Minority White Schools")
+
 
 ```
 
   In the first of 4 visualizations of the results section, the "income_group_plot" shows a positive relationship between median household income and average SAT scores of NYC public schools. The main coefficient of interest here is median household income and according to the plot, average SAT scores increased by 1.35 points for an additional 1,000 dollars in median household income. However, the regression model tied to this visualization show that when controlling for race/ethnicity SAT scores only increased by 0.25 points for an additional 1,000 dollars showing that the racial composition of a student body has an extremely large effect on SAT scores. Furthermore the R-Squared for this coefficient is only about 0.03 and the correlation is about 0.19 showing that income may not be the greatest indicator of student achievement.
   In the second visualization, the "race_eth_plot" a positive relationship is shown between race/ethnicity and average SAT scores of NYC public schools. The main coefficient of interest here is race/ethnicity and according to the plot, average SAT scores increase by 83 points when a school's composition of white students increased by 10 percentage points. This is extremely statistically significant because this shows that the race/ethnicity of a school has a direct effect on average SAT scores. For example, schools with a higher proportion of white students compared to students of color, are more likely to have a higher average SAT score. In addition, this data is statistically significant because race/ethnicity is shown to have notable implications for SAT scores as the R-Squared for this regression model is about 0.4 and the correlation between these two variables is about 0.61. While there are other factors at play here, race/ethnicity is proving to be one of the main indicators of student achievement.
-  The third visualization confirms these racial disparities in education as the "nycsat_race_eth" table shows the median of average SAT scores from schools with a majority of white students (1330) is 77 points higher than schools with a minority of white students (1253).
+  After mutating the race/ethnicity variable from a percentage to a binomial distribution of "majority white" and "minority white," I display a third visualization. This confirms the prescence racial disparities in education as the "nycsat_race_eth" table shows the median of average SAT scores from schools with a majority of white students (1330) is 77 points higher than schools with a minority of white students (1253).
   However, the fourth visualization, is the main plot that I want to focus on because it defeats the myth that students of a different race/ethnicity can succeed at the same rate when their family works hard to increase their median household income. In this plot, the main coefficient of interest is median household income, but this coefficient is compared across racial/ethnic lines. Average SAT scores increased by 1.37 points for an additional 1,000 dollars in median household income for schools with a majority of white students while average SAT scores increased by 1.15 points for an additional 1,000 dollars in median household income for schools with a minority of white students. This is statistically significant because this shows that a school with a majority of white students will have on average a 22 point advantage in SAT scores over a school with a majority of white students when median household income increases by 100,000 dollars.
 
 ## Conclusion Section
 
-#Testing for Confounders
+# Testing for Confounders
    
-```{r}
-test_fit <- lm(`Average SAT Score` ~ `School ID` + `Zip Code` + `Percent White` + `Student Enrollment` + `Standard Percent Tested` + `Household Median Income`, nycsat_income)
-
-summary(test_fit)
-```
 ```{r}
 
 model_standard_percent_tested <- lm(`Average SAT Score` ~ `Standard Percent Tested`, nycsat_income)
 
-summary(model_standard_percent_tested)
+model_standard_percent_tested_r_squared <- summary(model_standard_percent_tested)$r.squared
+cat("The R-squared value for schools with 50% or more students tested is:", round(model_standard_percent_tested_r_squared, 3), "\n\n") 
 
 race_eth_perc_con <- lm(`Average SAT Score` ~ `Percent White` + `Standard Percent Tested`, nycsat_income)
-race_eth_perc_con
 
-summary(race_eth_perc_con)
+race_eth_perc_con_r_squared <- summary(race_eth_perc_con)$r.squared
+cat("The R-squared value for race/ethnicity when controlling for schools with 50% or more students tested is:", race_eth_perc_con_r_squared, 3)
 
 ```
 
 ```{r}
 stan_test <- cor(nycsat_income$`Average SAT Score`, nycsat_income$`Standard Percent Tested`)
-stan_test
+cat("The correlation between Average SAT Score and Standard Percent Tested is:", round(stan_test, 3))
 ```
 
-  My hypothesis was upheld by the data presented by the NYC Department of Education, College Board and US Census Bureau from the 2014-15 school year.  There was a greater positive relationship between median household income on SAT scores among majority white schools compared to minority white schools. when analyzing median household income as the main coefficient, there was relatively low implications for a schools median SAT score compared to other coefficients such as race/ethnicity and percentage of students tested. For example when the coefficient of determination is race/ethnicity was about 40% of the variation in SAT scores can be attributed to either of these independent variables while median household income could only explain 3%. This can help defeat the notion that the "American Dream" applies to all people no matter their race/ethnicity equally. This can be concluded because SAT scores play a lorge role in college admissions and if race/ethnicity is playing a much larger role in SAT scores than income, that means race/ethnicity can play a large role in socioeconomic mobility since a college degree has proven to help in upward mobility.
-
-Although there was a lot more data for minority race/ethnic schools compared to data for schools with white students, making the data subject to error, this data upholds the consensus that systemic disparities occur throughout the American education system because of historic racist policies and practices.  
-
-An observed pattern that would prove my hypothesis to be true is if schools with higher percentages of white students are found to have relatively higher SAT scores. Another pattern that would prove my hypothesis to be true is if there were distinct variations in SAT scores between schools with different median household incomes. Also, if there is a greater variation between SAT scores for white students across income groups compared non-white students, which would show the unfair racial biases that promote better outcomes for white students across all income groups. An observed pattern that would disprove this hypothesis would be if there was no general distinction in SAT scores between schools that had different proportions of white students. Also if there was not variation between income groups and if race/ethnicity ended up having no effect on SAT scores across different median household income groups.
-
-Problem could be that the parent is not from that zip code and they are sending their kid to a school in a different zip code
-
-
+  My hypothesis was upheld by the data presented by the NYC Department of Education, College Board and US Census Bureau from the 2014-15 school year.  There was a greater positive relationship between median household income on SAT scores among majority white schools compared to minority white schools. when analyzing median household income as the main coefficient, there was relatively low implications for a schools median SAT score compared to other coefficients such as race/ethnicity and percentage of students tested. For example when the coefficient of determination is race/ethnicity was about 40% of the variation in SAT scores can be attributed to either of these independent variables while median household income could only explain 3%. This can help defeat the notion that the "American Dream" applies to all people no matter their race/ethnicity equally. This can be concluded because SAT scores play a large role in college admissions and if race/ethnicity is playing a much larger role in SAT scores than income, that means race/ethnicity can play a large role in socioeconomic mobility since a college degree has proven to help in upward mobility.
+  Limitations to my analysis of the race/ethnicity on student success can be attributed to the fact that this study only takes data from NYC public schools. For example, the data set I analyze only takes into account 277 schools when there are around 100,000 total public schools in the US. As a result, the location of the schools in my study could skew the data as the American education system is heavily influenced by different states. As a result, the outcome of students in one state could differ drastically from another state due to state policies, funding, and structure for schools.
+  In addition, there are only 32 majority white schools compared to 245 minority white schools, which shows how there could be a lot of error after analyzing this binomial distribution because they are extremely uneven. Other data that could potentially alter the effect of median household income on SAT scores is if parents send there kid to school in a different zip code from which they live in.
+  Another limitation to this analysis can be due to confounding variables such as the "Standard Percent Tested" variable, which I created by filtering out schools who didn't have over 50% tested students. The R-Squared value for this variable is about 0.4, which means about 40% of the variation in SAT scores can be attributed to this variable. In addition there is a strong positive relationship between this variable and SAT scores as it was 0.61. While the "Standard Percent Tested" variable wasn't one of the variables I was analyzing to describe disparities in SAT scores, it proves to be a significant indicator of SAT scores.
+  If I had more time, I would analyze a larger variety of school districts because that would be more representative the broader US public school population. In addition I would take this data from multiple school years so that I would be able to see if disparities among different groups of students has changed at all. Finally, with more schools being analyzed, I would be able to increase the "Standard Percent Tested" threshold to 80% or higher so that it wouldn't be such a confounding variable anymore.  
